@@ -101,7 +101,6 @@ function sample_correlation(coodinates; F, P)
     tau_correlation = vec(mean([Fs[i] ⋅ Fs[mod1(i + distance, P)] for i in 1:P, distance in 0:(P-1)], dims=1))
     return tau_correlation
 end
-
 function simulate_correlation(; β::Float64,
     P::Integer,
     masses::Vector{Float64},
@@ -114,8 +113,7 @@ function simulate_correlation(; β::Float64,
     verbose::Bool=false,
     V::Function, # potential
     id::Integer, # mpi rank
-    F::Function, # correlation function of F
-    output_directory::String
+    F::Function # correlation function of F
 )
     τ = β / P
     DOF = length(masses)
