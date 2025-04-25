@@ -110,7 +110,6 @@ function simulate_correlation(; β::Float64,
     simulation_round::Integer,
     init_cood::Vector{Float64},
     save_frequency::Int,
-    verbose::Bool=false,
     V::Function, # potential
     id::Integer, # mpi rank
     F::Function # correlation function of F
@@ -119,18 +118,17 @@ function simulate_correlation(; β::Float64,
     DOF = length(masses)
     chain = init_chain(init_cood; P, β, V)
     print("rank $(id) equabrating\n")
-    accepts = Vector{Bool}(undef, 0)
+    accepts = Vector{Bool}(undef, equabrating_number)
     for I in 1:equabrating_number
         accept = MC_update!(chain; P, τ, masses, DOF, M, V)[2]
-        push!(accepts, accept)
-        if verbose && I % 100 == 0
-            print("$(sum(accepts[end-99:end]) / 100)\n")
-        end
+        accepts[I] = accept
     end
+    print("rank $(id) equabrated, accept rate = $(sum(accepts) / equabrating_number)\n")
 
     print("rank $(id) simulating\n")
     supercorrelations = []
     for round in 1:simulation_round
+        accepts = Vector{Bool}(undef, simulating_number)
         correlations = []
         for I in 1:simulating_number
             accept = MC_update!(chain; P, τ, masses, DOF, M, V)[2]
@@ -139,13 +137,10 @@ function simulate_correlation(; β::Float64,
                 correlation = sample_correlation(chain.coodinates; F, P)
                 push!(correlations, correlation)
             end
-            push!(accepts, accept)
-            if verbose && I % 100 == 0
-                print("$(sum(accepts[end-99:end]) / 100)\n")
-            end
+            accepts[I] = accept
         end
         push!(supercorrelations, mean(correlations))
-        print("rank $(id) round $(round) saved\n")
+        print("rank $(id) round $(round) saved, accept rate = $(sum(accepts) / simulating_number)\n")
     end
 
     print("rank $(id) finished\n")
