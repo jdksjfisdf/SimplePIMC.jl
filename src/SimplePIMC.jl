@@ -21,7 +21,6 @@ function get_middle_unsym(ri, rm, M1, M2; τ, masses, DOF)
     return randn(DOF) .* sqrt.(1 ./ ((1 / (M1 * τ) + 1 / (M2 * τ)) .* masses)) .+ (ri * M2 + rm * M1) / (M1 + M2)
 end
 
-
 function MC_update!(ichain::IChain; M, τ, masses, DOF, P, V)
     i = rand(1:P)
     m = i + M
@@ -39,13 +38,12 @@ function MC_update!(ichain::IChain; M, τ, masses, DOF, P, V)
             @inbounds ichain.energies[mod1(n + i, P)] = V1s[n]
         end
     end
-    return ichain, accept
+    return accept
 end
 
-
-function init_chain(init_cood; P, β, V)
+function init_chain(init_cood; P, V)
     v = V(init_cood)
-    return IChain(β, stack([init_cood for i in 1:P], dims=1), [v for i in 1:P])
+    return IChain(stack([init_cood for i in 1:P], dims=1), [v for i in 1:P])
 end
 
 function simulate(; β::Float64,
@@ -57,40 +55,34 @@ function simulate(; β::Float64,
     simulation_round::Int,
     init_cood::Vector{Float64},
     save_frequency::Int,
-    verbose::Bool=false,
     V::Function,
     id::Int,
     output_directory::String
 )
     τ = β / P
     DOF = length(masses)
-    chain = init_chain(init_cood; P, β, V)
+    chain = init_chain(init_cood; P, V)
     print("rank $(id) equabrating\n")
-    accepts = Vector{Bool}(undef, 0)
+    accepts = Vector{Bool}(undef, equabrating_number)
     for I in 1:equabrating_number
-        accept = MC_update!(chain; P, τ, masses, DOF, M, V)[2]
-        push!(accepts, accept)
-        if verbose && I % 100 == 0
-            print("$(sum(accepts[end-99:end]) / 100)\n")
-        end
+        accept = MC_update!(chain; P, τ, masses, DOF, M, V)
+        accepts[I] = accept
     end
+    print("rank $(id) equabrated, accept rate = $(sum(accepts) / equabrating_number)\n")
 
     print("rank $(id) simulating\n")
-
     for round in 1:simulation_round
+        accepts = Vector{Bool}(undef, simulating_number)
         samples = []
         for I in 1:simulating_number
-            accept = MC_update!(chain; P, τ, masses, DOF, M, V)[2]
+            accept = MC_update!(chain; P, τ, masses, DOF, M, V)
             if mod(I, save_frequency) == 0
                 push!(samples, deepcopy(chain))
             end
-            push!(accepts, accept)
-            if verbose && I % 100 == 0
-                print("$(sum(accepts[end-99:end]) / 100)\n")
-            end
+            accepts[I] = accept
         end
-        save(joinpath(output_directory, "output_$(id)_$(round).jld2"), Dict("samples" => samples))
-        print("rank $(id) round $(round) saved\n")
+        save(joinpath(output_directory, "output_$(id)_$(round).jld2"), Dict("β" => β, "samples" => samples))
+        print("rank $(id) round $(round) saved, accept rate = $(sum(accepts) / simulating_number)\n")
     end
     print("rank $(id) finished\n")
     return
@@ -101,6 +93,7 @@ function sample_correlation(coodinates; F, P)
     tau_correlation = vec(mean([Fs[i] ⋅ Fs[mod1(i + distance, P)] for i in 1:P, distance in 0:(P-1)], dims=1))
     return tau_correlation
 end
+
 function simulate_correlation(; β::Float64,
     P::Integer,
     masses::Vector{Float64},
@@ -120,7 +113,7 @@ function simulate_correlation(; β::Float64,
     print("rank $(id) equabrating\n")
     accepts = Vector{Bool}(undef, equabrating_number)
     for I in 1:equabrating_number
-        accept = MC_update!(chain; P, τ, masses, DOF, M, V)[2]
+        accept = MC_update!(chain; P, τ, masses, DOF, M, V)
         accepts[I] = accept
     end
     print("rank $(id) equabrated, accept rate = $(sum(accepts) / equabrating_number)\n")
@@ -131,7 +124,7 @@ function simulate_correlation(; β::Float64,
         accepts = Vector{Bool}(undef, simulating_number)
         correlations = []
         for I in 1:simulating_number
-            accept = MC_update!(chain; P, τ, masses, DOF, M, V)[2]
+            accept = MC_update!(chain; P, τ, masses, DOF, M, V)
             # sample
             if mod(I, save_frequency) == 0
                 correlation = sample_correlation(chain.coodinates; F, P)
