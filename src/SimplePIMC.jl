@@ -109,7 +109,7 @@ function simulate_correlation(; β::Float64,
 )
     τ = β / P
     DOF = length(masses)
-    chain = init_chain(init_cood; P, β, V)
+    chain = init_chain(init_cood; P, V)
     print("rank $(id) equabrating\n")
     accepts = Vector{Bool}(undef, equabrating_number)
     for I in 1:equabrating_number
