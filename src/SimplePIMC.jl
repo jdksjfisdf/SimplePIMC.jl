@@ -1,6 +1,6 @@
 module SimplePIMC
 
-export simulate, simulate_correlation, IChain
+export simulate, simulate_correlation, simulate_correlation_general, IChain
 
 using LinearAlgebra, FileIO, Statistics
 
