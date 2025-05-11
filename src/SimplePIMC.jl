@@ -98,7 +98,16 @@ function sample_correlation_general(coodinates; F, P, τ)
     rs = [(coodinates[i, :] + coodinates[mod1(i + 1, P), :]) / 2 for i in 1:P]
     vs = [(coodinates[mod1(i + 1, P), :] - coodinates[i, :]) / τ for i in 1:P]
     Fs = [F(rs[i], vs[i]) for i in 1:P]
-    tau_correlation = vec(mean([Fs[i] ⋅ Fs[mod1(i + distance, P)] for i in 1:P, distance in 1:(P-1)], dims=1))
+    tau_correlation = vec(mean([sum(Fs[i] .* Fs[mod1(i + distance, P)]) for i in 1:P, distance in 1:(P-1)], dims=1))
+    return tau_correlation
+end
+
+function sample_correlation_general(coodinates; F, P, τ, zeroth_correction)
+    rs = [(coodinates[i, :] + coodinates[mod1(i + 1, P), :]) / 2 for i in 1:P]
+    vs = [(coodinates[mod1(i + 1, P), :] - coodinates[i, :]) / τ for i in 1:P]
+    Fs = [F(rs[i], vs[i]) for i in 1:P]
+    tau_correlation = vec(mean([sum(Fs[i] .* Fs[mod1(i + distance, P)]) for i in 1:P, distance in 0:(P-1)], dims=1))
+    tau_correlation[1] += mean(zeroth_correction(rs[i], vs[i]) for i in 1:P)
     return tau_correlation
 end
 
@@ -184,6 +193,54 @@ function simulate_correlation_general(; β::Float64,
             # sample
             if mod(I, save_frequency) == 0
                 correlation = sample_correlation_general(chain.coodinates; F, P, τ)
+                push!(correlations, correlation)
+            end
+            accepts[I] = accept
+        end
+        push!(supercorrelations, mean(correlations))
+        print("rank $(id) round $(round) saved, accept rate = $(sum(accepts) / simulating_number)\n")
+    end
+
+    print("rank $(id) finished\n")
+    return supercorrelations
+
+end
+
+function simulate_correlation_general(; β::Float64,
+    P::Integer,
+    masses::Vector{Float64},
+    M::Integer,
+    equabrating_number::Integer,
+    simulating_number::Integer,
+    simulation_round::Integer,
+    init_cood::Vector{Float64},
+    save_frequency::Int,
+    V::Function, # potential
+    id::Integer, # mpi rank
+    F::Function, # correlation function of F
+    zeroth_correction::Function
+)
+    τ = β / P
+    DOF = length(masses)
+    chain = init_chain(init_cood; P, V)
+    print("rank $(id) equabrating\n")
+    accepts = Vector{Bool}(undef, equabrating_number)
+    for I in 1:equabrating_number
+        accept = MC_update!(chain; P, τ, masses, DOF, M, V)
+        accepts[I] = accept
+    end
+    print("rank $(id) equabrated, accept rate = $(sum(accepts) / equabrating_number)\n")
+
+    print("rank $(id) simulating\n")
+    supercorrelations = []
+    for round in 1:simulation_round
+        accepts = Vector{Bool}(undef, simulating_number)
+        correlations = []
+        for I in 1:simulating_number
+            accept = MC_update!(chain; P, τ, masses, DOF, M, V)
+            # sample
+            if mod(I, save_frequency) == 0
+                correlation = sample_correlation_general(chain.coodinates; F, P, τ, zeroth_correction)
                 push!(correlations, correlation)
             end
             accepts[I] = accept
