@@ -33,7 +33,7 @@ function MC_update!(ichain::IChain; M, τ, masses, DOF, P, V)
     accept_prob = exp(-τ * (V1 - V0))
     accept = rand() < accept_prob
     if accept
-        @simd for n in 1:M-1
+        for n in 1:M-1
             @inbounds ichain.coodinates[mod1(n + i, P), :] .= new_beads[n]
             @inbounds ichain.energies[mod1(n + i, P)] = V1s[n]
         end
