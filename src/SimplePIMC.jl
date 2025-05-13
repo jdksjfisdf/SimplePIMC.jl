@@ -101,8 +101,7 @@ function sample_correlation_general(coodinates; F, P, τ, zeroth_correction)
     if isnothing(zeroth_correction)
         tau_correlation = vec(mean([sum(Fs[i] .* Fs[mod1(i + distance, P)]) for i in 1:P, distance in 1:(P-1)], dims=1))
     else
-        tmp = [sum(Fs[i] .* Fs[mod1(i + distance, P)]) for i in 1:P, distance in 0:(P-1)]
-        tau_correlation = vec(mean(tmp, dims=1))
+        tau_correlation = [mean(sum(Fs[i] .* Fs[mod1(i + distance, P)]) for i in 1:P) for distance in 0:(P-1)]
         tau_correlation[1] += mean(zeroth_correction(rs[i], vs[i]) for i in 1:P)
     end
     return tau_correlation
