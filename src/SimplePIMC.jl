@@ -98,14 +98,12 @@ function sample_correlation_general(coodinates; F, P, τ, zeroth_correction)
     rs = [(coodinates[i, :] + coodinates[mod1(i + 1, P), :]) / 2 for i in 1:P]
     vs = [(coodinates[mod1(i + 1, P), :] - coodinates[i, :]) / τ for i in 1:P]
     Fs = [F(rs[i], vs[i]) for i in 1:P]
-    GC.enable(false)
     if isnothing(zeroth_correction)
         tau_correlation = vec(mean([sum(Fs[i] .* Fs[mod1(i + distance, P)]) for i in 1:P, distance in 1:(P-1)], dims=1))
     else
         tau_correlation = vec(mean([sum(Fs[i] .* Fs[mod1(i + distance, P)]) for i in 1:P, distance in 0:(P-1)], dims=1))
         tau_correlation[1] += mean(zeroth_correction(rs[i], vs[i]) for i in 1:P)
     end
-    GC.enable(true)
     return tau_correlation
 end
 
