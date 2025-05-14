@@ -136,7 +136,8 @@ function simulate_correlation(; β::Float64,
     supercorrelations = []
     for round in 1:simulation_round
         accepts = Vector{Bool}(undef, simulating_number)
-        correlations = [] for I in 1:simulating_number
+        correlations = []
+        for I in 1:simulating_number
             accept = MC_update!(chain; P, τ, masses, DOF, M, V)
             # sample
             if mod(I, save_frequency) == 0
