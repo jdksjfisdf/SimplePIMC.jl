@@ -148,6 +148,7 @@ function simulate_correlation(; β::Float64,
         end
         push!(supercorrelations, mean(correlations))
         print("rank $(id) round $(round) saved, accept rate = $(sum(accepts) / simulating_number)\n")
+        GC.gc()
     end
 
     print("rank $(id) finished\n")
@@ -196,6 +197,7 @@ function simulate_correlation_general(; β::Float64,
         end
         push!(supercorrelations, mean(correlations))
         print("rank $(id) round $(round) saved, accept rate = $(sum(accepts) / simulating_number)\n")
+        GC.gc()
     end
 
     print("rank $(id) finished\n")
