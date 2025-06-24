@@ -26,7 +26,8 @@ end
 function MC_update!(ichain::IChain; M, τ, masses, DOF, P, V)
     i = rand(1:P)
     m = i + M
-    coods_init = ichain.coodinates[i, :]coods_exit = ichain.coodinates[mod1(m, P), :]
+    coods_init = ichain.coodinates[i, :]
+    coods_exit = ichain.coodinates[mod1(m, P), :]
     new_beads = generate_new_beads(coods_init, coods_exit; M, τ, masses, DOF)
     V0 = sum(ichain.energies[mod1(n, P)] for n in i+1:m-1)
     V1s = [V(ts) for ts in new_beads]
