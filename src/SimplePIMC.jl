@@ -6,6 +6,7 @@ using LinearAlgebra, FileIO, Statistics
 using LoopVectorization
 
 include("types.jl")
+include("utils.jl")
 
 
 function generate_new_beads(ri, rm; M, τ, masses, DOF)
@@ -25,8 +26,7 @@ end
 function MC_update!(ichain::IChain; M, τ, masses, DOF, P, V)
     i = rand(1:P)
     m = i + M
-    coods_init = ichain.coodinates[i, :]
-    coods_exit = ichain.coodinates[mod1(m, P), :]
+    coods_init = ichain.coodinates[i, :]coods_exit = ichain.coodinates[mod1(m, P), :]
     new_beads = generate_new_beads(coods_init, coods_exit; M, τ, masses, DOF)
     V0 = sum(ichain.energies[mod1(n, P)] for n in i+1:m-1)
     V1s = [V(ts) for ts in new_beads]
@@ -91,7 +91,7 @@ end
 
 function sample_correlation(coodinates; F, P)
     Fs = [F(coodinates[i, :]) for i in 1:P]
-    tau_correlation = vec(mean([Fs[i] ⋅ Fs[mod1(i + distance, P)] for i in 1:P, distance in 0:(P-1)], dims=1))
+    tau_correlation = vec(mean([dotu(Fs[i], Fs[mod1(i + distance, P)]) for i in 1:P, distance in 0:(P-1)], dims=1))
     return tau_correlation
 end
 
@@ -100,9 +100,9 @@ function sample_correlation_general(coodinates; F, P, τ, zeroth_correction)
     vs = [(coodinates[mod1(i + 1, P), :] - coodinates[i, :]) / τ for i in 1:P]
     Fs = [F(rs[i], vs[i]) for i in 1:P]
     if isnothing(zeroth_correction)
-        tau_correlation = vec(mean([sum(Fs[i] .* Fs[mod1(i + distance, P)]) for i in 1:P, distance in 1:(P-1)], dims=1))
+        tau_correlation = vec(mean([dotu(Fs[i], Fs[mod1(i + distance, P)]) for i in 1:P, distance in 1:(P-1)], dims=1))
     else
-        tau_correlation = vec(mean([sum(Fs[i] .* Fs[mod1(i + distance, P)]) for i in 1:P, distance in 0:(P-1)], dims=1))
+        tau_correlation = vec(mean([dotu(Fs[i], Fs[mod1(i + distance, P)]) for i in 1:P, distance in 0:(P-1)], dims=1))
         tau_correlation[1] += mean(zeroth_correction(rs[i], vs[i]) for i in 1:P)
     end
     return tau_correlation
